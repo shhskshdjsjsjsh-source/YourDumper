@@ -1,6 +1,8 @@
 import asyncio
 import io
 import os
+import shutil
+import stat
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
@@ -31,15 +33,24 @@ def support_view():
 
 
 def panel(title, description, color=0x111318, fields=None):
+    description = str(description)
+    if len(description) > 3500:
+        description = description[:3500] + "\n..."
     embed = discord.Embed(title=title, description=description, color=color)
     embed.set_footer(text="YourDumper • created by nexusdeev")
     for name, value in fields or []:
-        embed.add_field(name=name, value=value, inline=False)
+        value = str(value)
+        embed.add_field(name=name, value=value[:1200] + ("\n..." if len(value) > 1200 else ""), inline=False)
     return embed
 
 
 def preview(code, lines=5):
-    text = "\n".join(str(code).splitlines()[:lines]).replace("```", "''' ")
+    text = "\n".join(str(code).splitlines()[:lines])
+    # Discord limits the complete embed to 6000 characters. Keep previews
+    # small even when a generated line is extremely long.
+    text = text.replace("```", "''' ")[:1200]
+    if len(text) == 1200:
+        text += "\n..."
     return f"```lua\n{text or '-- empty'}\n```"
 
 
@@ -104,7 +115,44 @@ async def run_local_deobf(engine, code, filename):
 
 
 async def run_aspect(code, filename):
-    lune = os.getenv("LUNE_PATH", "lune")
+    configured = os.getenv("LUNE_PATH", "").strip()
+    candidates = []
+    if configured:
+        configured_path = Path(configured).expanduser()
+        candidates.append(configured_path if configured_path.is_absolute() else ROOT / configured_path)
+    # Keep local development convenient when YourDumper is next to one of the
+    # existing runtime folders in this repository.
+    candidates.extend([
+        ROOT / "lune",
+        ROOT / "lune.exe",
+        ROOT / "runtime" / "lune",
+        ROOT / "runtime" / "lune.exe",
+        ROOT.parent / "none-tools-v3" / "runtime" / "lune",
+        ROOT.parent / "BOT NOVA OBF V2" / "runtime" / "lune",
+        ROOT.parent / "6Vms" / "lune.exe",
+    ])
+    lune = next(
+        (
+            str(path)
+            for path in candidates
+            if path.is_file() and (os.name == "nt" or os.access(path, os.X_OK))
+        ),
+        None,
+    )
+    if lune is None:
+        lune = shutil.which(configured or "lune")
+    if lune is None:
+        raise RuntimeError(
+            "Lune is not installed. Set LUNE_PATH to the full path of the "
+            "Lune executable (for example /app/runtime/lune or "
+            "C:\\path\\to\\lune.exe)."
+        )
+    if os.name != "nt":
+        try:
+            lune_path = Path(lune)
+            lune_path.chmod(lune_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        except OSError:
+            pass
     with tempfile.TemporaryDirectory(prefix="yourdumper-") as directory:
         folder = Path(directory)
         source = folder / filename
@@ -171,9 +219,11 @@ async def help_command(ctx):
         f"`{PREFIX}ping` — Check bot latency",
         f"`{PREFIX}l` — Run the Aspect dumper",
         f"`{PREFIX}get` — Download and attach a script",
-        f"`{PREFIX}deobf` — Choose MoonSec or Prometheus",
+        f"`{PREFIX}wearedevs` — Run Prometheus with the WeAreDevs profile",
+        f"`{PREFIX}promdeobf` — Run the local Prometheus engine",
+        f"`{PREFIX}moonsec` — Run the local MoonSec engine",
     ])
-    await ctx.send(embed=panel("YourDumper • Commands", "English-only script tools.\n\n" + text, fields=[("Creator", "nexusdeev"), ("Support", SUPPORT_URL)]), view=support_view())
+    await ctx.send(embed=panel("YourDumper • Commands", "Script tools for authorized analysis.\n\n" + text, fields=[("Creator", "nexusdeev"), ("Support", SUPPORT_URL)]), view=support_view())
 
 
 @bot.command(name="get")
@@ -197,13 +247,38 @@ async def aspect_command(ctx, *args):
         await ctx.send(embed=panel("YourDumper • Error", str(error), 0xED4245), view=support_view())
 
 
-@bot.command(name="deobf")
-async def deobf_command(ctx, *args):
+async def run_deobf_command(ctx, engine, label, args):
     try:
         code, filename = await read_source(ctx, args)
-        await ctx.send(embed=panel("YourDumper • Deobfuscator", "Choose an engine below. The selected button becomes locked while processing.", fields=[("File", filename), ("Preview", preview(code))]), view=DeobfView(code, filename))
+        async with ctx.typing():
+            output = await run_local_deobf(engine, code, filename)
+        if not output.strip():
+            raise RuntimeError("The selected local engine returned no output.")
+        out_name = f"{Path(filename).stem}_{engine}_clean.lua"
+        embed = panel(
+            "YourDumper • Deobfuscation complete",
+            "The cleaned file is attached and was generated locally.",
+            0x3CC86E,
+            [("Engine", label), ("Preview", preview(output))],
+        )
+        await ctx.send(embed=embed, file=discord.File(io.BytesIO(output.encode()), filename=out_name), view=support_view())
     except Exception as error:
         await ctx.send(embed=panel("YourDumper • Error", str(error), 0xED4245), view=support_view())
+
+
+@bot.command(name="wearedevs")
+async def wearedevs_command(ctx, *args):
+    await run_deobf_command(ctx, "prometheus", "Prometheus • WeAreDevs", args)
+
+
+@bot.command(name="promdeobf")
+async def prometheus_command(ctx, *args):
+    await run_deobf_command(ctx, "prometheus", "Prometheus • Local engine", args)
+
+
+@bot.command(name="moonsec")
+async def moonsec_command(ctx, *args):
+    await run_deobf_command(ctx, "moonsec", "MoonSec • Local engine", args)
 
 
 if __name__ == "__main__":
