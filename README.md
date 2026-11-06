@@ -9,7 +9,7 @@
 
 Created by **nexusdeev**.
 
-[Support Server](https://dsc.gg/nonedump) · [LeakD API](https://api.leakd.fr)
+[Support Server](https://dsc.gg/nonedump)
 
 > A compact dumper and deobfuscation interface for authorized script analysis.
 
@@ -29,7 +29,7 @@ Created by **nexusdeev**.
 - Discord embeds, buttons and file attachments.
 - Aspect dumper using `aspect.luau`.
 - Script download support from attachments, replies, URLs and inline code.
-- MoonSec and Prometheus deobfuscation buttons through LeakD.
+- MoonSec and Prometheus deobfuscation buttons through the bundled local engines.
 - English-only interface.
 - A Support button on every response.
 - Duplicate deobfuscation clicks are ignored while a job is running.
@@ -83,6 +83,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Install the local JavaScript engine dependencies once:
+
+```bash
+cd moonsec-deobf && npm install
+cd ../prometheus-deobf && npm install
+cd ..
+```
+
 ### 3. Configure `.env`
 
 Copy `.env.example` to `.env` and set the Discord token:
@@ -90,8 +98,6 @@ Copy `.env.example` to `.env` and set the Discord token:
 ```env
 DISCORD_TOKEN=your_discord_bot_token
 PREFIX=.
-LEAKD_API_BASE=https://api.leakd.fr
-LEAKD_API_KEY=
 LUNE_PATH=lune
 ```
 
@@ -144,4 +150,4 @@ YourDumper was created by **nexusdeev**. The Discord interface, command routing 
 
 ## License
 
-Respect the licenses and terms of the bundled Aspect, MoonSec and Prometheus components. Use the bot only with scripts you are authorized to analyze.
+Respect the licenses and terms of the bundled Aspect, MoonSec and Prometheus components. The deobfuscators run locally; no script is sent to a third-party deobfuscation API. Use the bot only with scripts you are authorized to analyze.
