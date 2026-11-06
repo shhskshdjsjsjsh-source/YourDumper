@@ -1,0 +1,71 @@
+moonsec-deobfuscator-js
+========================
+
+Deobfuscator for Lua scripts obfuscated with MoonSec V3.
+JS port of tupsutumppu/MoonsecDeobfuscator, with automatic source recovery.
+
+REQUIREMENTS
+------------
+- Node.js 18+ (tested on v22). Node for Windows works fine.
+- Linux or Windows. Both decompiler binaries are bundled in tools/:
+    * tools/luadec        : Linux x86_64
+    * tools/luadec.exe    : Windows x86_64
+    * tools/unluac.jar    : Java fallback (auto-used if luadec is missing;
+                             needs a Java runtime)
+  The CLI picks luadec or luadec.exe automatically based on your OS.
+
+INSTALL
+-------
+    cd moonsec-deobfuscator-js
+    npm install
+
+USAGE
+-----
+    node bin/ms.js <input.lua> [-o <output.lua>]
+
+  - input.lua        : the obfuscated MoonSec V3 script
+  - -o <output.lua>  : optional; write the deobfuscated source to a file
+                       (without -o, the source is printed to stdout)
+
+EXAMPLES
+--------
+    node bin/ms.js obfuscated_script.lua
+    node bin/ms.js obfuscated_script.lua -o recovered_source.lua
+
+WHAT IT DOES
+------------
+1. Parses and deobfuscates the MoonSec V3 wrapper (reversed key/constant
+   encryption, control-flow solver, handler mapping)
+2. Serializes the recovered bytecode to valid Lua 5.1 bytecode
+3. Decompiles that bytecode to readable Lua source (via bundled luadec)
+
+The recovered source has generic variable names (l_0_0, l_0_1, ...) because
+MoonSec strips debug info; original identifiers are unrecoverable.
+
+OTHER OUTPUT MODES (advanced)
+-----------------------------
+    node bin/moonsec.js -dev -i <input.lua> -o <out.luac>   # raw Lua 5.1 bytecode
+    node bin/moonsec.js -dis -i <input.lua> -o <out.txt>    # disassembly listing
+
+TROUBLESHOOTING
+---------------
+- "luadec binary not found" : the tools/luadec file is missing or not
+  executable. Run: chmod +x tools/luadec
+- Exec format error on macOS/ARM: rebuild luadec, see below.
+
+BUILDING LUADEC (optional)
+--------------------------
+    git clone https://github.com/viruscamp/luadec.git
+    cd luadec/luadec
+    make                # Linux: builds luadec
+    make luadec CC=x86_64-w64-mingw32-gcc   # Windows: builds luadec (PE)
+    cp luadec /path/to/moonsec-deobfuscator-js/tools/luadec
+    cp luadec /path/to/moonsec-deobfuscator-js/tools/luadec.exe
+
+WINDOWS NOTES
+-------------
+- After unzipping, run:  npm install
+- Then:  node bin\ms.js input.lua -o recovered.lua
+- The tools\luadec.exe is a 64-bit Windows binary (built with MinGW
+  cross-compiler, verified with wine). No Java needed unless you delete
+  luadec.exe, in which case tools\unluac.jar is used instead.

@@ -1,0 +1,26 @@
+{
+  "name": "moonsec-deobfuscator-js",
+  "version": "1.0.0",
+  "description": "Devirtualizer for Lua scripts obfuscated with MoonSec V3. JS port of tupsutumppu/MoonsecDeobfuscator with a CLI.",
+  "main": "src/deobf/deobfuscator.js",
+  "bin": {
+    "moonsec-deobfuscate": "bin/moonsec.js",
+    "ms.js": "bin/ms.js"
+  },
+  "scripts": {
+    "dev": "node bin/moonsec.js -dev -i test/sample.lua -o test/out.luac",
+    "dis": "node bin/moonsec.js -dis -i test/sample.lua -o test/out.dis"
+  },
+  "keywords": [
+    "lua",
+    "moonsec",
+    "deobfuscator",
+    "devirtualization",
+    "luac"
+  ],
+  "license": "GPL-3.0",
+  "dependencies": {
+    "fengari": "^0.1.5",
+    "luaparse": "^0.3.1"
+  }
+}
