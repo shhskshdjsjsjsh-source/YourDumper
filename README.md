@@ -1,6 +1,6 @@
 # YourDumper
 
-**YourDumper** is a lightweight, English-only Discord script toolkit built with Python and `discord.py` Components v1.
+**YourDumper** is a lightweight Discord script toolkit built with Python and `discord.py` Components v1.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![discord.py](https://img.shields.io/badge/discord.py-2.x-5865F2?logo=discord&logoColor=white)
@@ -29,10 +29,10 @@ Created by **nexusdeev**.
 - Discord embeds, buttons and file attachments.
 - Aspect dumper using `aspect.luau`.
 - Script download support from attachments, replies, URLs and inline code.
-- MoonSec and Prometheus deobfuscation buttons through the bundled local engines.
-- English-only interface.
+- MoonSec and Prometheus commands through the bundled local engines.
+- Consistent command interface.
 - A Support button on every response.
-- Duplicate deobfuscation clicks are ignored while a job is running.
+- Each deobfuscation command runs one local engine per request.
 
 ## Commands
 
@@ -42,7 +42,9 @@ Created by **nexusdeev**.
 | `.ping` | Displays the Discord gateway latency. |
 | `.l` | Runs the Aspect dumper from `aspect.luau`. |
 | `.get` | Downloads a script from an attachment, reply, URL or inline source and attaches it. |
-| `.deobf` | Opens MoonSec and Prometheus engine buttons. |
+| `.wearedevs` | Runs the local Prometheus engine with the WeAreDevs profile. |
+| `.promdeobf` | Runs the local Prometheus engine. |
+| `.moonsec` | Runs the local MoonSec engine. |
 
 Every response includes a **Support** button linking to [dsc.gg/nonedump](https://dsc.gg/nonedump).
 
@@ -52,7 +54,7 @@ Every response includes a **Support** button linking to [dsc.gg/nonedump](https:
 .ping
 .help
 .get https://example.com/script.lua
-.deobf https://example.com/obfuscated.lua
+.moonsec https://example.com/obfuscated.lua
 ```
 
 You can also attach a Lua file or reply to a message containing a file/code and run the command without arguments.
@@ -93,12 +95,12 @@ cd ..
 
 ### 3. Configure `.env`
 
-Copy `.env.example` to `.env` and set the Discord token:
+Copy `.env.example` to `.env`, set the Discord token, and point `LUNE_PATH` at the Lune executable installed on the host:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token
 PREFIX=.
-LUNE_PATH=lune
+LUNE_PATH=/app/runtime/lune
 ```
 
 Never commit `.env` or expose the bot token.
@@ -113,7 +115,7 @@ The bot requires the Discord **Message Content Intent**. Enable it in the Discor
 
 ## Aspect runtime
 
-`.l` runs the bundled `aspect.luau` through the executable configured in `LUNE_PATH`. Install [Lune](https://github.com/lune-org/lune) on the host or set `LUNE_PATH` to its absolute path.
+`.l` runs `aspect.luau` through the included `runtime/lune` executable. Set `LUNE_PATH` to another absolute executable path when your host uses a different runtime (for example `/app/runtime/lune` or `C:\\tools\\lune.exe`). If it is omitted, YourDumper checks its bundled runtime, common local runtime folders and the system `PATH`.
 
 ## Hosting
 
@@ -136,6 +138,7 @@ worker: python bot.py
 YourDumper/
 ├── bot.py
 ├── aspect.luau
+├── runtime/lune
 ├── moonsec-deobf/
 ├── prometheus-deobf/
 ├── requirements.txt
@@ -151,6 +154,3 @@ YourDumper was created by **nexusdeev**. The Discord interface, command routing 
 ## License
 
 Respect the licenses and terms of the bundled Aspect, MoonSec and Prometheus components. The deobfuscators run locally; no script is sent to a third-party deobfuscation API. Use the bot only with scripts you are authorized to analyze.
-
-## Free Hosting
-[![Deploy on Bot-Hosting](https://bot-hosting.net/assets/deploy-badge.svg)](https://bot-hosting.net/deploy?source=template&template=yourdumper-57a4a7)
