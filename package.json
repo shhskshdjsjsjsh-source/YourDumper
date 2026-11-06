@@ -1,0 +1,17 @@
+{
+  "name": "yourdumper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YourDumper Discord script toolkit by nexusdeev",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord.js": "^14.22.1",
+    "dotenv": "^16.4.5"
+  }
+}
