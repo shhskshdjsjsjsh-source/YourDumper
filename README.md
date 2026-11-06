@@ -151,3 +151,6 @@ YourDumper was created by **nexusdeev**. The Discord interface, command routing 
 ## License
 
 Respect the licenses and terms of the bundled Aspect, MoonSec and Prometheus components. The deobfuscators run locally; no script is sent to a third-party deobfuscation API. Use the bot only with scripts you are authorized to analyze.
+
+## Free Hosting
+[![Deploy on Bot-Hosting](https://bot-hosting.net/assets/deploy-badge.svg)](https://bot-hosting.net/deploy?source=template&template=yourdumper-57a4a7)
