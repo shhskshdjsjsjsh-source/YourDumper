@@ -15,7 +15,6 @@ load_dotenv()
 ROOT = Path(__file__).resolve().parent
 PREFIX = os.getenv("PREFIX", ".")
 TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
-LEAKD_BASE = os.getenv("LEAKD_API_BASE", "https://api.leakd.fr").rstrip("/")
 SUPPORT_URL = "https://dsc.gg/nonedump"
 ASPECT_FILE = ROOT / "aspect.luau"
 MAX_BYTES = 8 * 1024 * 1024
@@ -82,28 +81,26 @@ async def read_source(ctx, args):
     return raw, "script.lua"
 
 
-async def leakd(endpoint, code, filename):
-    form = aiohttp.FormData()
-    form.add_field("file", code.encode("utf-8"), filename=filename, content_type="text/plain")
-    headers = {"User-Agent": "YourDumper/1.0"}
-    if os.getenv("LEAKD_API_KEY"):
-        headers["X-API-Key"] = os.getenv("LEAKD_API_KEY")
-    async with aiohttp.ClientSession() as session:
-        async with session.post(f"{LEAKD_BASE}/{endpoint}", data=form, headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as response:
-            raw = await response.text()
-            if response.status >= 400:
-                raise RuntimeError(f"LeakD returned HTTP {response.status}.")
-            try:
-                data = await response.json(content_type=None)
-            except Exception:
-                return raw
-    if isinstance(data, str):
-        return data
-    value = data.get("data", data) if isinstance(data, dict) else {}
-    for key in ("deobfuscated_code", "beautified_code", "code", "result", "output", "content"):
-        if isinstance(value, dict) and value.get(key):
-            return value[key]
-    return ""
+async def run_local_deobf(engine, code, filename):
+    """Run the bundled JavaScript deobfuscator; no LeakD request is made."""
+    project = ROOT / ("moonsec-deobf" if engine == "moonsec" else "prometheus-deobf")
+    script = project / "bin" / ("ms.js" if engine == "moonsec" else "pdeobf.js")
+    if not script.exists():
+        raise RuntimeError(f"The bundled {engine} engine is missing.")
+    with tempfile.TemporaryDirectory(prefix="yourdumper-deobf-") as directory:
+        folder = Path(directory)
+        source = folder / filename
+        output = folder / "result.lua"
+        source.write_text(code, encoding="utf-8")
+        command = ["node", str(script), str(source), "-o", str(output)]
+        process = await asyncio.create_subprocess_exec(*command, cwd=project, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=180)
+        if process.returncode != 0:
+            detail = (stderr or stdout).decode(errors="replace").strip()
+            raise RuntimeError(detail or f"{engine} exited with code {process.returncode}.")
+        if not output.exists():
+            raise RuntimeError(f"The {engine} engine did not produce an output file.")
+        return output.read_text(encoding="utf-8", errors="replace")
 
 
 async def run_aspect(code, filename):
@@ -130,16 +127,16 @@ class DeobfView(discord.ui.View):
         self.busy = False
         self.add_item(discord.ui.Button(label="Support", style=discord.ButtonStyle.link, url=SUPPORT_URL))
 
-    async def run(self, interaction, endpoint, label):
+    async def run(self, interaction, engine, label):
         if self.busy:
             return await interaction.response.send_message("This job is already running. Please wait for the first result.", ephemeral=True, view=support_view())
         self.busy = True
         await interaction.response.defer()
         try:
-            output = await leakd(endpoint, self.code, self.filename)
+            output = await run_local_deobf(engine, self.code, self.filename)
             if not output.strip():
-                raise RuntimeError("LeakD returned no output.")
-            out_name = f"{Path(self.filename).stem}_{endpoint}_clean.lua"
+                raise RuntimeError("The selected local engine returned no output.")
+            out_name = f"{Path(self.filename).stem}_{engine}_clean.lua"
             embed = panel("YourDumper • Deobfuscation complete", "The cleaned file is attached and hosted by the selected engine.", 0x3CC86E, [("Engine", label), ("Preview", preview(output))])
             await interaction.edit_original_response(embed=embed, view=support_view())
             await interaction.followup.send(content=f"Generated file: `{out_name}`", file=discord.File(io.BytesIO(output.encode()), filename=out_name), view=support_view())
@@ -150,11 +147,11 @@ class DeobfView(discord.ui.View):
 
     @discord.ui.button(label="MoonSec", style=discord.ButtonStyle.primary)
     async def moonsec(self, interaction, button):
-        await self.run(interaction, "moonsec", "MoonSec • LeakD")
+        await self.run(interaction, "moonsec", "MoonSec • Local engine")
 
     @discord.ui.button(label="Prometheus", style=discord.ButtonStyle.primary)
     async def prometheus(self, interaction, button):
-        await self.run(interaction, "prometheus", "Prometheus • LeakD")
+        await self.run(interaction, "prometheus", "Prometheus • Local engine")
 
 
 @bot.event
